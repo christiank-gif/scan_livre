@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Scanner de bibliothèque</title>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+<style>
+  :root {
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #1a1a1a;
+    background: #f4f4f2;
+  }
+  body {
+    margin: 0;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  h1 { font-size: 20px; margin: 0; }
+  #video {
+    width: 100%;
+    max-width: 640px;
+    border-radius: 8px;
+    background: #000;
+    display: block;
+  }
+  #statut {
+    font-size: 14px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: #e2e2de;
+    min-height: 20px;
+    text-align: center;
+  }
+  #resultat {
+    display: none;
+    width: 100%;
+    max-width: 640px;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+  #resultat h2 { font-size: 17px; margin: 0 0 4px; }
+  #resultat p { margin: 0 0 12px; font-size: 14px; }
+  #resultat input {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: 15px;
+    padding: 6px 8px;
+    margin-bottom: 8px;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+  }
+  .boutons { display: flex; gap: 8px; }
+  button {
+    font-size: 15px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #btnOk { background: #2e7d32; color: #fff; }
+  #btnNok { background: #c62828; color: #fff; }
+  #saisieManuelle {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    max-width: 640px;
+  }
+  #isbnManuel {
+    flex: 1;
+    font-size: 15px;
+    padding: 8px;
+    border: 1px solid #aaa;
+    border-radius: 6px;
+  }
+  #btnManuel { background: #455a64; color: #fff; }
+  #liste {
+    width: 100%;
+    max-width: 640px;
+  }
+  #liste h2 { font-size: 16px; }
+  #liste ul { padding-left: 18px; font-size: 14px; }
+  #liste li { margin-bottom: 4px; }
+  #btnExport { background: #455a64; color: #fff; }
+</style>
+</head>
+<body>
+  <h1>Scanner de bibliothèque</h1>
+  <video id="video" autoplay playsinline muted></video>
+  <div id="statut">Démarrage de la caméra...</div>
+  <div id="resultat">
+    <input id="titreLivre" placeholder="Titre" />
+    <input id="auteurLivre" placeholder="Auteur" />
+    <div class="boutons">
+      <button id="btnOk">OK</button>
+      <button id="btnNok">NOK</button>
+    </div>
+  </div>
+  <div id="saisieManuelle">
+    <input id="isbnManuel" placeholder="ISBN saisi manuellement" />
+    <button id="btnManuel">Rechercher</button>
+  </div>
+  <div id="liste">
+    <h2>Ma bibliothèque (<span id="compteur">0</span>)</h2>
+    <button id="btnExport">Exporter en CSV</button>
+    <ul id="maListe"></ul>
+  </div>
+
+<script>
+(function () {
+  var video = document.getElementById('video');
+  var statut = document.getElementById('statut');
+  var resultat = document.getElementById('resultat');
+  var titreLivre = document.getElementById('titreLivre');
+  var auteurLivre = document.getElementById('auteurLivre');
+  var btnOk = document.getElementById('btnOk');
+  var btnNok = document.getElementById('btnNok');
+  var isbnManuel = document.getElementById('isbnManuel');
+  var btnManuel = document.getElementById('btnManuel');
+  var maListe = document.getElementById('maListe');
+  var compteur = document.getElementById('compteur');
+  var btnExport = document.getElementById('btnExport');
+
+  var scanActif = false;
+  var codeEnCours = null;
+  var lecteur = null;
+
+  if (window.ZXing) {
+    lecteur = new ZXing.BrowserMultiFormatReader(null, 150);
+  }
+
+  function getDB() {
+    try {
+      return JSON.parse(localStorage.getItem('bibliotheque') || '{}');
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function setDB(db) {
+    localStorage.setItem('bibliotheque', JSON.stringify(db));
+  }
+
+  function afficherListe() {
+    var db = getDB();
+    var cles = Object.keys(db);
+    compteur.textContent = cles.length;
+    maListe.innerHTML = '';
+    cles.forEach(function (isbn) {
+      var li = document.createElement('li');
+      li.textContent = db[isbn].titre + ' — ' + db[isbn].auteur;
+      maListe.appendChild(li);
+    });
+  }
+
+  var tentatives = 0;
+
+  function demarrerScan() {
+    resultat.style.display = 'none';
+    codeEnCours = null;
+    scanActif = true;
+    statut.textContent = 'Scan en cours... rapproche le code-barres de la caméra, bien à plat et éclairé.';
+    if (lecteur) {
+      lecteur.decodeContinuously(video, function (result, err) {
+        tentatives++;
+        if (tentatives % 30 === 0) {
+          statut.textContent = 'Scan en cours... ' + tentatives + ' images analysées, code-barres non détecté.';
+        }
+        if (result && scanActif) {
+          chercherLivre(result.getText());
+        }
+      });
+    } else {
+      statut.textContent = 'Librairie ZXing non chargée. Vérifiez la connexion internet.';
+    }
+  }
+
+  function arreterScan(message) {
+    scanActif = false;
+    if (lecteur) {
+      try { lecteur.reset(); } catch (e) {}
+    }
+    statut.textContent = message;
+  }
+
+  function chercherLivre(isbn) {
+    arreterScan('Recherche de ' + isbn + '...');
+    fetch('https://openlibrary.org/isbn/' + isbn + '.json')
+      .then(function (r) { return r.json(); })
+      .then(function (edition) {
+        if (edition && edition.title) {
+          return traiterEdition(isbn, edition);
+        }
+        if (edition && edition.works && edition.works[0] && edition.works[0].key) {
+          return fetch('https://openlibrary.org' + edition.works[0].key + '.json')
+            .then(function (r) { return r.json(); })
+            .then(function (work) {
+              if (!work || !work.title) {
+                return chercherGoogleBooks(isbn);
+              }
+              var ed = { title: work.title, authors: work.authors };
+              return traiterEdition(isbn, ed);
+            });
+        }
+        return chercherGoogleBooks(isbn);
+      })
+      .catch(function () {
+        statut.textContent = 'Erreur réseau lors de la recherche.';
+        demarrerScan();
+      });
+  }
+
+  function chercherGoogleBooks(isbn) {
+    return fetch('https://www.googleapis.com/books/v1/volumes?q=isbn:' + isbn)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var item = data.items && data.items[0];
+        if (!item) {
+          statut.textContent = 'Aucun livre trouvé pour ' + isbn + '.';
+          demarrerScan();
+          return;
+        }
+        var info = item.volumeInfo || {};
+        var edition = {
+          title: info.title,
+          authors: info.authors ? info.authors.map(function (a) { return { name: a }; }) : []
+        };
+        return traiterEdition(isbn, edition, true);
+      });
+  }
+
+  function traiterEdition(isbn, edition, auteursSimples) {
+    var auteurKey = !auteursSimples && edition.authors && edition.authors[0] && edition.authors[0].key;
+    var promesseAuteur = auteursSimples
+      ? Promise.resolve((edition.authors[0] && edition.authors[0].name) || 'Auteur inconnu')
+      : (auteurKey
+          ? fetch('https://openlibrary.org' + auteurKey + '.json')
+              .then(function (r) { return r.json(); })
+              .then(function (a) { return a.name; })
+              .catch(function () { return 'Auteur inconnu'; })
+          : Promise.resolve('Auteur inconnu'));
+    return promesseAuteur.then(function (auteur) {
+      var db = getDB();
+      if (db[isbn]) {
+        statut.textContent = 'Ce livre est déjà dans la bibliothèque.';
+        demarrerScan();
+        return;
+      }
+      codeEnCours = { isbn: isbn, titre: edition.title, auteur: auteur };
+      titreLivre.value = edition.title;
+      auteurLivre.value = auteur;
+      resultat.style.display = 'block';
+      statut.textContent = 'Livre détecté : validez ou refusez.';
+    });
+  }
+
+  btnOk.addEventListener('click', function () {
+    if (!codeEnCours) return;
+    var db = getDB();
+    db[codeEnCours.isbn] = { titre: titreLivre.value, auteur: auteurLivre.value };
+    setDB(db);
+    afficherListe();
+    demarrerScan();
+  });
+
+  btnNok.addEventListener('click', function () {
+    demarrerScan();
+  });
+
+  btnManuel.addEventListener('click', function () {
+    var isbn = isbnManuel.value.replace(/[^0-9Xx]/g, '');
+    if (isbn.length >= 10) {
+      chercherLivre(isbn);
+    } else {
+      statut.textContent = 'Saisissez un ISBN valide (10 ou 13 chiffres).';
+    }
+  });
+
+  btnExport.addEventListener('click', function () {
+    var db = getDB();
+    var lignes = ['isbn;titre;auteur'];
+    Object.keys(db).forEach(function (isbn) {
+      var l = db[isbn];
+      lignes.push(isbn + ';' + '"' + String(l.titre).replace(/"/g, '""') + '";' + '"' + String(l.auteur).replace(/"/g, '""') + '"');
+    });
+    var blob = new Blob(['﻿' + lignes.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'bibliotheque.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  function choisirCamera() {
+    return navigator.mediaDevices.enumerateDevices().then(function (devices) {
+      var cameras = devices.filter(function (d) { return d.kind === 'videoinput'; });
+      var arrière = cameras.find(function (d) {
+        return /back|rear|environment|arrière/i.test(d.label);
+      });
+      var choisie = arrière || cameras[cameras.length - 1];
+      return choisie ? choisie.deviceId : null;
+    });
+  }
+
+  choisirCamera()
+    .then(function (deviceId) {
+      var contraintes = {
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
+      };
+      if (deviceId) {
+        contraintes.video.deviceId = { exact: deviceId };
+      } else {
+        contraintes.video.facingMode = 'environment';
+      }
+      return navigator.mediaDevices.getUserMedia(contraintes);
+    })
+    .then(function (stream) {
+      video.srcObject = stream;
+      video.onloadedmetadata = function () {
+        video.play().then(function () {
+          if (lecteur) {
+            demarrerScan();
+          } else {
+            arreterScan('Librairie de scan indisponible. Utilisez la saisie manuelle.');
+          }
+        }).catch(function () {
+          arreterScan('Lecture vidéo impossible. Utilisez la saisie manuelle.');
+        });
+      };
+    })
+    .catch(function () {
+      arreterScan('Accès caméra refusé. Autorisez la caméra ou utilisez la saisie manuelle.');
+    });
+
+  afficherListe();
+})();
+</script>
+</body>
+</html>
