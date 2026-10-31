@@ -1,357 +1,98 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Scanner de bibliothèque</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scanner de bibliothèque – V2</title>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <style>
-  :root {
-    font-family: system-ui, -apple-system, sans-serif;
-    color: #1a1a1a;
-    background: #f4f4f2;
-  }
-  body {
-    margin: 0;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-  }
-  h1 { font-size: 20px; margin: 0; }
-  #version { font-size: 12px; color: #777; }
-  #video {
-    width: 100%;
-    max-width: 640px;
-    border-radius: 8px;
-    background: #000;
-    display: block;
-  }
-  #statut {
-    font-size: 14px;
-    padding: 8px 12px;
-    border-radius: 6px;
-    background: #e2e2de;
-    min-height: 20px;
-    text-align: center;
-  }
-  #resultat {
-    display: none;
-    width: 100%;
-    max-width: 640px;
-    background: #fff;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    padding: 16px;
-    box-sizing: border-box;
-  }
-  #resultat h2 { font-size: 17px; margin: 0 0 4px; }
-  #resultat p { margin: 0 0 12px; font-size: 14px; }
-  #resultat input {
-    width: 100%;
-    box-sizing: border-box;
-    font-size: 15px;
-    padding: 6px 8px;
-    margin-bottom: 8px;
-    border: 1px solid #aaa;
-    border-radius: 6px;
-  }
-  .boutons { display: flex; gap: 8px; }
-  button {
-    font-size: 15px;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-  #btnOk { background: #2e7d32; color: #fff; }
-  #btnNok { background: #c62828; color: #fff; }
-  #saisieManuelle {
-    display: flex;
-    gap: 8px;
-    width: 100%;
-    max-width: 640px;
-  }
-  #isbnManuel {
-    flex: 1;
-    font-size: 15px;
-    padding: 8px;
-    border: 1px solid #aaa;
-    border-radius: 6px;
-  }
-  #btnManuel { background: #455a64; color: #fff; }
-  #liste {
-    width: 100%;
-    max-width: 640px;
-  }
-  #liste h2 { font-size: 16px; }
-  #liste ul { padding-left: 18px; font-size: 14px; }
-  #liste li { margin-bottom: 4px; }
-  #btnExport { background: #455a64; color: #fff; }
+:root{font-family:system-ui,-apple-system,sans-serif;color:#202124;background:#f4f5f3}*{box-sizing:border-box}body{margin:0;padding:18px;display:flex;flex-direction:column;align-items:center;gap:14px}h1{font-size:22px;margin:0}#version{font-size:12px;color:#70757a}main{width:100%;max-width:680px;display:flex;flex-direction:column;gap:14px}video{width:100%;max-height:48vh;object-fit:cover;border-radius:10px;background:#111;display:block}#statut{padding:11px 13px;background:#e7e9e5;border-radius:8px;min-height:42px;font-size:14px}section{background:#fff;border:1px solid #dadce0;border-radius:10px;padding:15px}section h2{font-size:17px;margin:0 0 10px}.row{display:flex;gap:8px;flex-wrap:wrap}.row input{flex:1;min-width:180px}input{width:100%;padding:10px 11px;border:1px solid #b9bdc2;border-radius:7px;font:inherit;margin:4px 0}button{font:inherit;border:0;border-radius:7px;padding:10px 15px;cursor:pointer;background:#455a64;color:white}button:disabled{opacity:.5;cursor:wait}#btnOk{background:#26743b}#btnNok{background:#a52d2d}.muted{color:#666;font-size:12px}.sources{font-size:12px;color:#555;margin:8px 0}.book{padding:8px 0;border-bottom:1px solid #eee}.book:last-child{border:0}.book strong{display:block}.book small{color:#666}#liste ul{padding-left:20px;margin-bottom:0}#liste li{margin:6px 0;font-size:14px}.actions{display:flex;gap:8px;flex-wrap:wrap}.notice{font-size:13px;color:#555;line-height:1.4}.hidden{display:none!important}
 </style>
 </head>
 <body>
-  <h1>Scanner de bibliothèque</h1>
-  <div id="version">v1.1</div>
-  <video id="video" autoplay playsinline muted></video>
-  <div id="statut">Démarrage de la caméra...</div>
-  <div id="resultat">
-    <input id="titreLivre" placeholder="Titre" />
-    <input id="auteurLivre" placeholder="Auteur" />
-    <div class="boutons">
-      <button id="btnOk">OK</button>
-      <button id="btnNok">NOK</button>
-    </div>
-  </div>
-  <div id="saisieManuelle">
-    <input id="isbnManuel" placeholder="ISBN saisi manuellement" />
-    <button id="btnManuel">Rechercher</button>
-  </div>
-  <div id="liste">
-    <h2>Ma bibliothèque (<span id="compteur">0</span>)</h2>
-    <button id="btnExport">Exporter en CSV</button>
-    <ul id="maListe"></ul>
-  </div>
-
+<h1>Scanner de bibliothèque</h1><div id="version">Version 2.0 – recherche multi-sources</div>
+<main>
+<video id="video" autoplay playsinline muted></video>
+<div id="statut" role="status" aria-live="polite">Initialisation de la caméra…</div>
+<section id="resultat" class="hidden">
+<h2>Livre identifié – vérifie les informations</h2>
+<label for="titreLivre">Titre</label><input id="titreLivre" placeholder="Titre du livre">
+<label for="auteurLivre">Auteur(s)</label><input id="auteurLivre" placeholder="Auteur(s), séparés par des virgules">
+<div class="sources" id="sources"></div>
+<div class="actions"><button id="btnOk">Ajouter à ma bibliothèque</button><button id="btnNok">Ignorer</button></div>
+</section>
+<section>
+<h2>Recherche manuelle</h2><div class="row"><input id="isbnManuel" placeholder="Saisir un ISBN-10 ou ISBN-13" inputmode="numeric"><button id="btnManuel">Rechercher</button></div>
+<p class="muted">Tu peux aussi scanner directement le code-barres au dos du livre.</p>
+</section>
+<section id="liste"><h2>Ma bibliothèque (<span id="compteur">0</span>)</h2><div class="actions"><button id="btnExport">Exporter en CSV</button><button id="btnEffacer" type="button">Effacer la bibliothèque</button></div><ul id="maListe"></ul></section>
+<p class="notice">Les données de la bibliothèque sont conservées dans le stockage local de ce navigateur. Pense à exporter régulièrement ton inventaire en CSV.</p>
+</main>
 <script>
-(function () {
-  var video = document.getElementById('video');
-  var statut = document.getElementById('statut');
-  var resultat = document.getElementById('resultat');
-  var titreLivre = document.getElementById('titreLivre');
-  var auteurLivre = document.getElementById('auteurLivre');
-  var btnOk = document.getElementById('btnOk');
-  var btnNok = document.getElementById('btnNok');
-  var isbnManuel = document.getElementById('isbnManuel');
-  var btnManuel = document.getElementById('btnManuel');
-  var maListe = document.getElementById('maListe');
-  var compteur = document.getElementById('compteur');
-  var btnExport = document.getElementById('btnExport');
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const video=$('video'),statut=$('statut'),resultat=$('resultat'),titreLivre=$('titreLivre'),auteurLivre=$('auteurLivre');
+let reader=null,scanControls=null,scanActif=false,rechercheEnCours=false,codeEnCours=null,dernierISBN='',dernierScanAt=0;
+const DB_KEY='bibliotheque';
 
-  var scanActif = false;
-  var codeEnCours = null;
-  var lecteur = null;
+function normaliserISBN(value){return String(value||'').replace(/[\s-]/g,'').replace(/[^0-9xX]/g,'').toUpperCase();}
+function getDB(){try{return JSON.parse(localStorage.getItem(DB_KEY)||'{}')}catch(e){return {}}}
+function setDB(db){localStorage.setItem(DB_KEY,JSON.stringify(db));}
+function afficherListe(){const db=getDB(),cles=Object.keys(db).sort((a,b)=>a.localeCompare(b));$('compteur').textContent=cles.length;$('maListe').innerHTML='';cles.forEach(isbn=>{const li=document.createElement('li');li.textContent=(db[isbn].titre||'Titre inconnu')+' — '+(db[isbn].auteur||'Auteur inconnu')+' ('+isbn+')';$('maListe').appendChild(li)});}
+function statutTexte(message){statut.textContent=message;}
+function arreterScan(message){scanActif=false;try{if(scanControls&&scanControls.stop)scanControls.stop();}catch(e){}try{if(reader)reader.reset();}catch(e){}scanControls=null;if(message)statutTexte(message);}
+function demarrerScan(){if(!reader||scanActif||rechercheEnCours)return;resultat.classList.add('hidden');codeEnCours=null;scanActif=true;statutTexte('Scan en cours : présente le code-barres devant la caméra.');reader.decodeFromVideoDevice(null,video,(res,err,controls)=>{if(controls)scanControls=controls;if(res&&scanActif&&!rechercheEnCours){const now=Date.now();const isbn=normaliserISBN(res.getText());if(isbn.length>=10&&(isbn!==dernierISBN||now-dernierScanAt>5000)){dernierISBN=isbn;dernierScanAt=now;chercherLivre(isbn);}}});}
+async function fetchJSON(url,timeout=9000){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeout);try{const r=await fetch(url,{signal:controller.signal});if(!r.ok)throw new Error('HTTP '+r.status);return await r.json()}finally{clearTimeout(timer)}}
+async function fetchText(url,timeout=11000){const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),timeout);try{const r=await fetch(url,{signal:controller.signal});if(!r.ok)throw new Error('HTTP '+r.status);return await r.text()}finally{clearTimeout(timer)}}
 
-  if (window.ZXing) {
-    lecteur = new ZXing.BrowserMultiFormatReader(null, 150);
-  }
-
-  function getDB() {
-    try {
-      return JSON.parse(localStorage.getItem('bibliotheque') || '{}');
-    } catch (e) {
-      return {};
-    }
-  }
-
-  function setDB(db) {
-    localStorage.setItem('bibliotheque', JSON.stringify(db));
-  }
-
-  function afficherListe() {
-    var db = getDB();
-    var cles = Object.keys(db);
-    compteur.textContent = cles.length;
-    maListe.innerHTML = '';
-    cles.forEach(function (isbn) {
-      var li = document.createElement('li');
-      li.textContent = db[isbn].titre + ' — ' + db[isbn].auteur;
-      maListe.appendChild(li);
-    });
-  }
-
-  var tentatives = 0;
-
-  function demarrerScan() {
-    resultat.style.display = 'none';
-    btnOk.style.display = '';
-    codeEnCours = null;
-    scanActif = true;
-    statut.textContent = 'Scan en cours... rapproche le code-barres de la caméra, bien à plat et éclairé.';
-    if (lecteur) {
-      lecteur.decodeContinuously(video, function (result, err) {
-        tentatives++;
-        if (tentatives % 30 === 0) {
-          statut.textContent = 'Scan en cours... ' + tentatives + ' images analysées, code-barres non détecté.';
-        }
-        if (result && scanActif) {
-          chercherLivre(result.getText());
-        }
-      });
-    } else {
-      statut.textContent = 'Librairie ZXing non chargée. Vérifiez la connexion internet.';
-    }
-  }
-
-  function arreterScan(message) {
-    scanActif = false;
-    if (lecteur) {
-      try { lecteur.reset(); } catch (e) {}
-    }
-    statut.textContent = message;
-  }
-
-  function chercherLivre(isbn) {
-    arreterScan('Recherche de ' + isbn + '...');
-    fetch('https://openlibrary.org/isbn/' + isbn + '.json')
-      .then(function (r) { return r.json(); })
-      .then(function (edition) {
-        if (edition && edition.title) {
-          return traiterEdition(isbn, edition);
-        }
-        if (edition && edition.works && edition.works[0] && edition.works[0].key) {
-          return fetch('https://openlibrary.org' + edition.works[0].key + '.json')
-            .then(function (r) { return r.json(); })
-            .then(function (work) {
-              if (!work || !work.title) {
-                return chercherGoogleBooks(isbn);
-              }
-              var ed = { title: work.title, authors: work.authors };
-              return traiterEdition(isbn, ed);
-            });
-        }
-        return chercherGoogleBooks(isbn);
-      })
-      .catch(function () {
-        statut.textContent = 'Erreur réseau lors de la recherche.';
-        demarrerScan();
-      });
-  }
-
-  function chercherGoogleBooks(isbn) {
-    return fetch('https://www.googleapis.com/books/v1/volumes?q=isbn:' + isbn)
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        var item = data.items && data.items[0];
-        if (!item) {
-          statut.textContent = 'Aucun livre trouvé pour ' + isbn + '.';
-          demarrerScan();
-          return;
-        }
-        var info = item.volumeInfo || {};
-        var edition = {
-          title: info.title,
-          authors: info.authors ? info.authors.map(function (a) { return { name: a }; }) : []
-        };
-        return traiterEdition(isbn, edition, true);
-      });
-  }
-
-  function traiterEdition(isbn, edition, auteursSimples) {
-    var auteurKey = !auteursSimples && edition.authors && edition.authors[0] && edition.authors[0].key;
-    var promesseAuteur = auteursSimples
-      ? Promise.resolve((edition.authors[0] && edition.authors[0].name) || 'Auteur inconnu')
-      : (auteurKey
-          ? fetch('https://openlibrary.org' + auteurKey + '.json')
-              .then(function (r) { return r.json(); })
-              .then(function (a) { return a.name; })
-              .catch(function () { return 'Auteur inconnu'; })
-          : Promise.resolve('Auteur inconnu'));
-    return promesseAuteur.then(function (auteur) {
-      var db = getDB();
-      if (db[isbn]) {
-        codeEnCours = null;
-        resultat.style.display = 'block';
-        titreLivre.value = db[isbn].titre;
-        auteurLivre.value = db[isbn].auteur;
-        statut.textContent = 'Ce livre est déjà dans la bibliothèque.';
-        btnOk.style.display = 'none';
-        return;
-      }
-      codeEnCours = { isbn: isbn, titre: edition.title, auteur: auteur };
-      titreLivre.value = edition.title;
-      auteurLivre.value = auteur;
-      resultat.style.display = 'block';
-      statut.textContent = 'Livre détecté : validez ou refusez.';
-    });
-  }
-
-  btnOk.addEventListener('click', function () {
-    if (!codeEnCours) return;
-    var db = getDB();
-    db[codeEnCours.isbn] = { titre: titreLivre.value, auteur: auteurLivre.value };
-    setDB(db);
-    afficherListe();
-    demarrerScan();
-  });
-
-  btnNok.addEventListener('click', function () {
-    demarrerScan();
-  });
-
-  btnManuel.addEventListener('click', function () {
-    var isbn = isbnManuel.value.replace(/[^0-9Xx]/g, '');
-    if (isbn.length >= 10) {
-      chercherLivre(isbn);
-    } else {
-      statut.textContent = 'Saisissez un ISBN valide (10 ou 13 chiffres).';
-    }
-  });
-
-  function exporterCSV() {
-    var db = getDB();
-    var lignes = ['isbn;titre;auteur'];
-    Object.keys(db).forEach(function (isbn) {
-      var l = db[isbn];
-      lignes.push(isbn + ';' + '"' + String(l.titre).replace(/"/g, '""') + '";' + '"' + String(l.auteur).replace(/"/g, '""') + '"');
-    });
-    var blob = new Blob(['﻿' + lignes.join('\n')], { type: 'text/csv;charset=utf-8' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'bibliotheque.csv';
-    a.click();
-    URL.revokeObjectURL(a.href);
-  }
-
-  btnExport.addEventListener('click', exporterCSV);
-
-  function choisirCamera() {
-    return navigator.mediaDevices.enumerateDevices().then(function (devices) {
-      var cameras = devices.filter(function (d) { return d.kind === 'videoinput'; });
-      var arrière = cameras.find(function (d) {
-        return /back|rear|environment|arrière/i.test(d.label);
-      });
-      var choisie = arrière || cameras[cameras.length - 1];
-      return choisie ? choisie.deviceId : null;
-    });
-  }
-
-  choisirCamera()
-    .then(function (deviceId) {
-      var contraintes = {
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      };
-      if (deviceId) {
-        contraintes.video.deviceId = { exact: deviceId };
-      } else {
-        contraintes.video.facingMode = 'environment';
-      }
-      return navigator.mediaDevices.getUserMedia(contraintes);
-    })
-    .then(function (stream) {
-      video.srcObject = stream;
-      video.onloadedmetadata = function () {
-        video.play().then(function () {
-          if (lecteur) {
-            demarrerScan();
-          } else {
-            arreterScan('Librairie de scan indisponible. Utilisez la saisie manuelle.');
-          }
-        }).catch(function () {
-          arreterScan('Lecture vidéo impossible. Utilisez la saisie manuelle.');
-        });
-      };
-    })
-    .catch(function () {
-      arreterScan('Accès caméra refusé. Autorisez la caméra ou utilisez la saisie manuelle.');
-    });
-
-  afficherListe();
+async function chercherOpenLibrary(isbn){
+ const url='https://openlibrary.org/isbn/'+encodeURIComponent(isbn)+'.json';
+ const edition=await fetchJSON(url);if(!edition||!edition.title)throw new Error('ISBN absent d’Open Library');
+ let titre=edition.title||'',auteurs=[];
+ if(Array.isArray(edition.authors)&&edition.authors.length){auteurs=(await Promise.all(edition.authors.slice(0,8).map(async item=>{if(item.name)return item.name;if(!item.key)return '';try{const a=await fetchJSON('https://openlibrary.org'+item.key+'.json',6500);return a.name||''}catch(e){return ''}}))).filter(Boolean)}
+ if((!titre||!auteurs.length)&&Array.isArray(edition.works)&&edition.works[0]&&edition.works[0].key){try{const work=await fetchJSON('https://openlibrary.org'+edition.works[0].key+'.json');if(!titre&&work.title)titre=work.title;if(!auteurs.length&&Array.isArray(work.authors)){auteurs=(await Promise.all(work.authors.slice(0,8).map(async item=>{if(!item.author||!item.author.key)return '';try{const a=await fetchJSON('https://openlibrary.org'+item.author.key+'.json',6500);return a.name||''}catch(e){return ''}}))).filter(Boolean)}}catch(e){}}
+ return {titre,auteurs,source:'Open Library'};
+}
+async function chercherGoogleBooks(isbn){
+ const data=await fetchJSON('https://www.googleapis.com/books/v1/volumes?q=isbn:'+encodeURIComponent(isbn)+'&maxResults=10');
+ if(!data.items||!data.items.length)throw new Error('ISBN absent de Google Books');
+ const items=data.items;const exact=items.find(item=>(item.volumeInfo?.industryIdentifiers||[]).some(x=>normaliserISBN(x.identifier)===isbn));
+ const info=(exact||items[0]).volumeInfo||{};if(!info.title&&!info.authors?.length)throw new Error('Notice Google Books incomplète');
+ return {titre:info.title||'',auteurs:info.authors||[],source:'Google Books',couverture:info.imageLinks?.thumbnail||''};
+}
+async function chercherBnF(isbn){
+ // Le service SRU officiel de la BnF fournit les notices bibliographiques en Dublin Core.
+ const q='bib.isbn all "'+isbn+'"';
+ const url='https://catalogue.bnf.fr/api/SRU?version=1.2&operation=searchRetrieve&query='+encodeURIComponent(q)+'&recordSchema=dublincore&maximumRecords=5';
+ const xml=await fetchText(url);const doc=new DOMParser().parseFromString(xml,'text/xml');
+ if(doc.querySelector('parsererror'))throw new Error('Réponse XML BnF illisible');
+ const records=Array.from(doc.getElementsByTagNameNS('*','recordData'));
+ for(const record of records){const titles=Array.from(record.getElementsByTagNameNS('*','title')).map(n=>n.textContent.trim()).filter(Boolean);const creators=Array.from(record.getElementsByTagNameNS('*','creator')).map(n=>n.textContent.trim()).filter(Boolean);if(titles.length||creators.length)return {titre:titles[0]||'',auteurs:creators,source:'BnF'};}
+ throw new Error('ISBN absent du catalogue BnF');
+}
+function fusionner(notices){const utiles=notices.filter(Boolean);const titreNotice=utiles.find(n=>n.titre);const auteurs=[];utiles.forEach(n=>(n.auteurs||[]).forEach(a=>{const nom=String(a).trim();if(nom&&!auteurs.some(x=>x.toLocaleLowerCase('fr')===nom.toLocaleLowerCase('fr')))auteurs.push(nom)}));return {titre:titreNotice?.titre||'',auteur:auteurs.join(', '),sources:utiles.map(n=>n.source),couverture:utiles.find(n=>n.couverture)?.couverture||''};}
+async function chercherLivre(value){const isbn=normaliserISBN(value);if(isbn.length!==10&&isbn.length!==13){statutTexte('ISBN invalide : saisis 10 ou 13 caractères.');return;}if(rechercheEnCours)return;
+ arreterScan();rechercheEnCours=true;$('btnManuel').disabled=true;statutTexte('Recherche de '+isbn+' dans plusieurs catalogues…');resultat.classList.add('hidden');
+ const db=getDB();if(db[isbn]){afficherResultat(isbn,{titre:db[isbn].titre||'',auteur:db[isbn].auteur||'',sources:['Bibliothèque locale']},true);finRecherche();return;}
+ const resultats=await Promise.allSettled([chercherOpenLibrary(isbn),chercherGoogleBooks(isbn)]);
+ const notices=resultats.filter(r=>r.status==='fulfilled').map(r=>r.value);
+ let fusion=fusionner(notices);
+ // La BnF complète les résultats si le titre ou l'auteur manque, ou si les deux premières bases échouent.
+ if(!fusion.titre||!fusion.auteur){try{notices.push(await chercherBnF(isbn));fusion=fusionner(notices)}catch(e){}}
+ if(!fusion.titre&&!fusion.auteur){statutTexte('Aucun résultat trouvé pour '+isbn+'. Tu peux saisir le titre et l’auteur manuellement.');afficherResultat(isbn,{titre:'',auteur:'',sources:[]},false);finRecherche();return;}
+ afficherResultat(isbn,fusion,false);finRecherche();
+}
+function afficherResultat(isbn,data,dejaEnregistre){codeEnCours={isbn,titre:data.titre||'',auteur:data.auteur||''};titreLivre.value=codeEnCours.titre;auteurLivre.value=codeEnCours.auteur;$('sources').textContent='Sources : '+(data.sources&&data.sources.length?data.sources.join(' · '):'saisie manuelle');resultat.classList.remove('hidden');$('btnOk').textContent=dejaEnregistre?'Mettre à jour':'Ajouter à ma bibliothèque';statutTexte(dejaEnregistre?'Livre déjà présent : tu peux corriger ses informations.':(data.titre||data.auteur?'Résultat trouvé : vérifie puis valide.':'Livre non identifié : complète les champs manuellement.'));}
+function finRecherche(){rechercheEnCours=false;$('btnManuel').disabled=false;}
+$('btnOk').addEventListener('click',()=>{if(!codeEnCours)return;const titre=titreLivre.value.trim(),auteur=auteurLivre.value.trim();if(!titre&&!auteur){statutTexte('Renseigne au moins le titre ou l’auteur avant l’enregistrement.');return;}const db=getDB();db[codeEnCours.isbn]={titre:titre||'Titre inconnu',auteur:auteur||'Auteur inconnu'};setDB(db);afficherListe();resultat.classList.add('hidden');codeEnCours=null;demarrerScan();});
+$('btnNok').addEventListener('click',()=>{resultat.classList.add('hidden');codeEnCours=null;demarrerScan();});
+$('btnManuel').addEventListener('click',()=>chercherLivre($('isbnManuel').value));
+$('isbnManuel').addEventListener('keydown',e=>{if(e.key==='Enter')chercherLivre($('isbnManuel').value)});
+$('btnExport').addEventListener('click',()=>{const db=getDB(),rows=[['isbn','titre','auteur']];Object.keys(db).forEach(isbn=>rows.push([isbn,db[isbn].titre,db[isbn].auteur]));const csv='\uFEFF'+rows.map(row=>row.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(';')).join('\r\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='bibliotheque.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+$('btnEffacer').addEventListener('click',()=>{if(confirm('Effacer tous les livres enregistrés dans ce navigateur ? Cette action est irréversible.')){localStorage.removeItem(DB_KEY);afficherListe();statutTexte('Bibliothèque locale effacée.');}});
+async function initialiser(){afficherListe();if(!navigator.mediaDevices?.getUserMedia){statutTexte('Caméra indisponible dans ce navigateur. Utilise la saisie manuelle.');return;}if(!window.ZXing){statutTexte('ZXing n’a pas été chargé. Vérifie la connexion Internet.');return;}try{reader=new ZXing.BrowserMultiFormatReader();demarrerScan();}catch(e){statutTexte('Impossible de démarrer le scanner. Utilise la saisie manuelle.');}}
+initialiser();
 })();
 </script>
-</body>
-</html>
+</body></html>
